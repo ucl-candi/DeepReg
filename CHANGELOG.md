@@ -26,6 +26,7 @@ compatible with the updates.
 
 ### Changed
 
+- Change the ResizeCPTransform to use 1-D separable convolutions
 - Changed dataset config so that `format` and `labeled` are defined per split.
 - Reduced TensorFlow logging level.
 - Used `DEEPREG_LOG_LEVEL` to control logging in DeepReg.

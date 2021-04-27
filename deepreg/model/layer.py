@@ -6,6 +6,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras.layers as tfkl
 
+from deepreg.loss.kernel import gaussian_kernel1d_sigma as gaussian_kernel1d
+from deepreg.loss.util import separable_filter
 from deepreg.model import layer_util
 
 LAYER_DICT = dict(conv3d=tfkl.Conv3D, deconv3d=tfkl.Conv3DTranspose)
@@ -425,14 +427,13 @@ class ResizeCPTransform(tfkl.Layer):
             0.44 * cp for cp in control_point_spacing
         ]  # 0.44 = ln(4)/pi
         self.cp_spacing = control_point_spacing
-        self.kernel = None
+        self.kernel = [gaussian_kernel1d(sigma=sigma) for sigma in self.kernel_sigma]
         self._output_shape = None
         self._resize = None
 
     def build(self, input_shape):
         super().build(input_shape=input_shape)
 
-        self.kernel = layer_util.gaussian_filter_3d(self.kernel_sigma)
         output_shape = tuple(
             tf.cast(tf.math.ceil(v / c) + 3, tf.int32)
             for v, c in zip(input_shape[1:-1], self.cp_spacing)
@@ -441,9 +442,14 @@ class ResizeCPTransform(tfkl.Layer):
         self._resize = Resize3d(output_shape)
 
     def call(self, inputs, **kwargs) -> tf.Tensor:
-        output = tf.nn.conv3d(
-            inputs, self.kernel, strides=(1, 1, 1, 1, 1), padding="SAME"
-        )
+        tensor = tf.unstack(inputs, axis=-1)
+        outputs = []
+        for it_t, t in enumerate(tensor):
+            outputs += [
+                separable_filter(tf.expand_dims(t, axis=4), kernel=self.kernel[it_t])
+            ]  # E[t] * E[1]
+        output = tf.concat(outputs, axis=-1)
+
         output = self._resize(inputs=output)  # type: ignore
         return output
 

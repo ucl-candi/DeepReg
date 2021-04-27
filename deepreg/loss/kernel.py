@@ -65,7 +65,7 @@ def gaussian_kernel1d_size(kernel_size: int) -> tf.Tensor:
     return filters
 
 
-def gaussian_kernel1d_sigma(sigma: int) -> tf.Tensor:
+def gaussian_kernel1d_sigma(sigma: float) -> tf.Tensor:
     """
     Calculate a gaussian kernel.
 
